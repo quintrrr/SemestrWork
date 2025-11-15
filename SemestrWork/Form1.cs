@@ -1,21 +1,23 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Configuration;
+using Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace SemestrWork
 {
     public partial class Form1 : Form
     {
-        private AppContext _context;
-
-        public Form1()
+        private readonly ITreeService _treeService;
+        public Form1(ITreeService treeService)
         {
             InitializeComponent();
             treeView.BeforeExpand += TreeView_BeforeExpand;
             FormClosing += Form1_FormClosing;
-            _context = new AppContext("AppConnection");
             InitRootGroup();
+            
+            _treeService = treeService;
+            
             gbEditGroup.Visible = false;
             gbEditProperty.Visible = false;
 
@@ -37,79 +39,39 @@ namespace SemestrWork
 
             expandedNode.Nodes.Clear();
 
-            var id = Convert.ToInt64(expandedNode.Name.Split("|")[0]);
-            var type = expandedNode.Name.Split("|")[1];
+            var (id, type) = ParseNodeKey(expandedNode.Name);
+            
             if (type == "Property")
             {
                 return;
             }
-
-            var relationsGroups = ReadTRelationByParentId(id);
-            var childGroups = new List<TGroup>();
-            foreach (var relationsGroup in relationsGroups)
-            {
-                var childGroup = ReadTGroupById(relationsGroup.ChildId);
-                if (childGroup is not null) childGroups.Add(childGroup);
-            }
+            
+            var childGroups = _treeService.GetChildGroups(id);
             foreach (var childGroup in childGroups)
             {
-                var child = new TreeNode()
-                {
-                    Text = childGroup.Name,
-                    Name = $"{childGroup.Id}|Group"
-                };
-
-                var techNode = new TreeNode
-                {
-                    Text = "TechnicalGroup",
-                    Name = "TechnicalGroup"
-                };
-
-                child.Nodes.Add(techNode);
-                expandedNode.Nodes.Add(child);
+                var childNode = CreateGroupNode(childGroup);
+                expandedNode.Nodes.Add(childNode);
             }
-
-            var groupProperties = ReadTPropertyByGroupId(id);
-            foreach (var groupProperty in groupProperties)
+            
+            var properties = _treeService.GetGroupProperties(id);
+            foreach (var property in properties)
             {
-                var property = new TreeNode()
-                {
-                    Text = groupProperty.Name,
-                    Name = $"{groupProperty.Id}|Property"
-                };
-
-                var techNode = new TreeNode
-                {
-                    Text = "TechnicalGroup",
-                    Name = "TechnicalGroup"
-                };
-
-                property.Nodes.Add(techNode);
-                expandedNode.Nodes.Add(property);
+                var propertyNode = CreatePropertyNode(property);
+                expandedNode.Nodes.Add(propertyNode);
             }
         }
 
         public void InitRootGroup()
         {
-            var firstGroup = ReadTGroupById(1);
+            var firstGroup = _treeService.GetTGroup(1);
             if (firstGroup is null)
             {
                 MessageBox.Show("Корневая группа отсутствует в базе данных");
                 return;
             }
 
-            var rootNode = new TreeNode
-            {
-                Text = firstGroup.Name,
-                Name = $"{firstGroup.Id}|Group"
-            };
-            var techNode = new TreeNode
-            {
-                Text = "TechnicalGroup",
-                Name = "TechnicalGroup"
-            };
-
-            rootNode.Nodes.Add(techNode);
+            var rootNode = CreateTreeNode(firstGroup);
+            
             treeView.Nodes.Add(rootNode);
         }
 
@@ -126,10 +88,7 @@ namespace SemestrWork
             gbEditProperty.Visible = false;
             gbEditGroup.Visible = true;
             tbGroupName.Text = string.Empty;
-            tbGroupId.Text = (_context.Groups.Any() ? _context.Groups.Max(x => x.Id) + 1 : 1)
-                .ToString();
-
-
+            tbGroupId.Text = _treeService.GetNextGroupId().ToString();
         }
 
         private void miAddProperty_Click(object sender, EventArgs e)
@@ -140,8 +99,8 @@ namespace SemestrWork
 
             if (selectedNode == null) return;
 
-            var id = Convert.ToInt64(selectedNode.Name.Split("|")[0]);
-            var type = selectedNode.Name.Split("|")[1];
+            var (id, type) = ParseNodeKey(selectedNode.Name);
+            
             if (type == "Property")
             {
                 MessageBox.Show("Выберите группу, в которую хотите добавить свойство");
@@ -162,8 +121,7 @@ namespace SemestrWork
 
             if (selectedNode is null) return;
 
-            var id = selectedNode.Name.Split("|")[0];
-            var type = selectedNode.Name.Split("|")[1];
+            var (id, type) = ParseNodeKey(selectedNode.Name);
 
             if (type == "Group")
             {
@@ -178,7 +136,7 @@ namespace SemestrWork
                 gbEditGroup.Visible = false;
                 gbEditProperty.Visible = true;
 
-                var property = ReadTPropertyById(Convert.ToInt64(id));
+                var property = _treeService.GetProperty(id);
 
                 if (property is null) return;
                 tbPropertyName.Text = selectedNode.Text;
@@ -197,36 +155,35 @@ namespace SemestrWork
                 return;
             }
 
-            var id = Convert.ToInt64(selectedNode.Name.Split("|")[0]);
-            var type = selectedNode.Name.Split("|")[1];
+            var (id, type) = ParseNodeKey(selectedNode.Name);
 
             if (type == "Group")
             {
-                var parentRelations = ReadTRelationByParentId(id);
-                var childRelations = ReadTRelationByChildId(id);
-                var properties = ReadTPropertyByGroupId(id);
+                var parentRelations = _treeService.GetParentRelations(id);
+                var childRelations = _treeService.GetChildRelations(id);
+                var properties = _treeService.GetGroupProperties(id);
 
                 foreach (var parentRelation in parentRelations)
                 {
-                    DeleteTRelation(id, parentRelation.ChildId);
+                    _treeService.DeleteRelation(id, parentRelation.ChildId);
                 }
 
                 foreach (var childRelation in childRelations)
                 {
-                    DeleteTRelation(childRelation.ParentId, id);
+                    _treeService.DeleteRelation(childRelation.ParentId, id);
                 }
 
                 foreach (var property in properties)
                 {
-                    DeleteTProperty(property.Id);
+                    _treeService.DeleteProperty(property.Id);
                 }
                 _context.SaveChanges();
 
-                DeleteTGroup(id);
+                _treeService.DeleteGroup(id);
             }
             else if (type == "Property")
             {
-                DeleteTProperty(id);
+                _treeService.DeleteProperty(id);
             }
 
             _context.SaveChanges();
@@ -240,8 +197,8 @@ namespace SemestrWork
             var name = tbGroupName.Text;
 
             var selectedNode = treeView.SelectedNode;
-            var parentId = Convert.ToInt64(selectedNode.Name.Split("|")[0]);
-            var type = selectedNode.Name.Split("|")[1];
+            
+            var (parentId, type) = ParseNodeKey(selectedNode.Name);
 
             if (_context.Groups.Any(g => g.Id == id))
             {
@@ -332,5 +289,53 @@ namespace SemestrWork
             tbPropertyGroupId.Text = string.Empty;
             gbEditProperty.Visible = false;
         }
+
+        private (long id, string type) ParseNodeKey(string nodeKey)
+        {
+            var parts = nodeKey.Split('|');
+            if (parts.Length != 2)
+                throw new InvalidOperationException($"Неверный формат Name: {nodeKey}");
+
+            var id = Convert.ToInt64(parts[0]);
+            var type = parts[1];
+
+            return (id, type);
+        }
+        
+        private TreeNode CreateTreeNode(TGroup group)
+        {
+            var node = new TreeNode
+            {
+                Text = group.Name,
+                Name = $"{group.Id}|Group"
+            };
+            
+            node.Nodes.Add(new TreeNode
+            {
+                Text = "TechnicalGroup",
+                Name = "TechnicalGroup"
+            });
+
+            return node;
+        }
+        
+        private TreeNode CreateTreeNode(TProperty property)
+        {
+            var node = new TreeNode
+            {
+                Text = property.Name,
+                Name = $"{property.Id}|Property"
+            };
+
+            node.Nodes.Add(new TreeNode
+            {
+                Text = "TechnicalGroup",
+                Name = "TechnicalGroup"
+            });
+
+            return node;
+        }
+        
+        
     }   
 }
