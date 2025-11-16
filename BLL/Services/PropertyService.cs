@@ -1,27 +1,35 @@
+using Core.DTO;
 using Core.Interfaces;
 using DAL.DAO;
-using DAL.Repository;
 
 namespace BLL.Services;
 
 public class PropertyService : IPropertyService
 {
-    private readonly TPropertyRepository _propertyRepository;
+    private readonly ITPropertyRepository _propertyRepository;
+    private readonly IMapper<TPropertyDTO, TProperty> _mapper;
 
     public PropertyService(
-        TPropertyRepository propertyRepository)
+        ITPropertyRepository propertyRepository,
+        IMapper<TPropertyDTO, TProperty> mapper)
     {
         _propertyRepository = propertyRepository;
+        _mapper = mapper;
     }
 
-    public async Task<List<TProperty>> GetGroupPropertiesAsync(long groupId)
+    public async Task<List<TPropertyDTO>> GetGroupPropertiesAsync(long groupId)
     {
-        return await _propertyRepository.ReadTPropertyByGroupIdAsync(groupId);
+        var propertiesDAO = await _propertyRepository.ReadTPropertyByGroupIdAsync(groupId);
+        return propertiesDAO.Select(_mapper.ToBlo).ToList();
     }
 
-    public async Task<TProperty?> GetPropertyAsync(long propertyId)
+    public async Task<TPropertyDTO?> GetPropertyAsync(long propertyId)
     {
-        return await _propertyRepository.ReadTPropertyByIdAsync(propertyId);
+        var property = await _propertyRepository.ReadTPropertyByIdAsync(propertyId);
+
+        if (property == null) throw new ArgumentNullException(nameof(property));
+
+        return _mapper.ToBlo(property);
     }
 
     public async Task DeletePropertyAsync(long propertyId)

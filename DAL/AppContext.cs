@@ -1,5 +1,4 @@
-﻿using System.Configuration;
-using DAL.DAO;
+﻿using DAL.DAO;
 using Microsoft.EntityFrameworkCore;
 
 namespace DAL
@@ -10,11 +9,6 @@ namespace DAL
         public DbSet<TRelation> Relations { get; set; }
         public DbSet<TProperty> Properties { get; set; }
 
-        public AppContext(string connectionName)
-            : base(new DbContextOptionsBuilder<AppContext>()
-                .UseNpgsql(ConfigurationManager.ConnectionStrings[connectionName].ConnectionString)
-                .Options)
-        { }
-
+        public AppContext(DbContextOptions<AppContext> options) : base(options) { }
     }
 }

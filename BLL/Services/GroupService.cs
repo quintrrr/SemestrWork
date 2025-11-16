@@ -1,20 +1,23 @@
+using Core.DTO;
 using Core.Interfaces;
 using DAL.DAO;
-using DAL.Repository;
 
 namespace BLL.Services;
 
 public class GroupService : IGroupService
 {
-    private readonly TGroupRepository _groupRepository;
-    private readonly TRelationRepository _relationRepository;
+    private readonly ITGroupRepository _groupRepository;
+    private readonly ITRelationRepository _relationRepository;
+    private readonly IMapper<TGroupDTO, TGroup> _mapper;
 
     public GroupService(
-        TGroupRepository groupRepository,
-        TRelationRepository relationRepository)
+        ITGroupRepository groupRepository,
+        ITRelationRepository relationRepository, 
+        IMapper<TGroupDTO, TGroup> mapper)
     {
         _groupRepository = groupRepository;
         _relationRepository = relationRepository;
+        _mapper = mapper;
     }
     
     public async Task CreateGroupAsync(string name)
@@ -32,23 +35,27 @@ public class GroupService : IGroupService
         await _groupRepository.DeleteTGroupAsync(groupId);
     }
 
-    public async Task<List<TGroup>> GetChildGroupsAsync(long parentGroupId)
+    public async Task<List<TGroupDTO>> GetChildGroupsAsync(long parentGroupId)
     {
         var relationsGroups = await _relationRepository.ReadTRelationByParentIdAsync(parentGroupId);
         
-        var childGroups = new List<TGroup>();
+        var childGroups = new List<TGroupDTO>();
         foreach (var relationsGroup in relationsGroups)
         {
             var childGroup = await _groupRepository.ReadTGroupByIdAsync(relationsGroup.ChildId);
-            if (childGroup is not null) childGroups.Add(childGroup);
+            if (childGroup is not null) childGroups.Add(_mapper.ToBlo(childGroup));
         }
         
         return childGroups;
     }
 
-    public async Task<TGroup?> GetGroupAsync(long groupId)
+    public async Task<TGroupDTO?> GetGroupAsync(long groupId)
     {
-        return await _groupRepository.ReadTGroupByIdAsync(groupId);
+        var group = await _groupRepository.ReadTGroupByIdAsync(groupId);
+
+        if (group is null) throw new ArgumentNullException(nameof(group));
+
+        return _mapper.ToBlo(group);
     }
 
     public async Task<long> GetNextGroupIdAsync()

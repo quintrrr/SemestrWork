@@ -1,27 +1,34 @@
+using Core.DTO;
 using Core.Interfaces;
 using DAL.DAO;
-using DAL.Repository;
 
 namespace BLL.Services;
 
 public class RelationService : IRelationService
 {
-    private readonly TRelationRepository _relationRepository;
+    private readonly ITRelationRepository _relationRepository;
+    private readonly IMapper<TRelationDTO, TRelation> _mapper;
 
     public RelationService(
-        TRelationRepository relationRepository)
+        ITRelationRepository relationRepository,
+        IMapper<TRelationDTO, TRelation> mapper)
     {
         _relationRepository = relationRepository;
+        _mapper = mapper;
     }
     
-    public async Task<List<TRelation>> GetParentRelationsAsync(long parentId)
+    public async Task<List<TRelationDTO>> GetParentRelationsAsync(long parentId)
     {
-        return await _relationRepository.ReadTRelationByParentIdAsync(parentId);
+        var relations = await _relationRepository.ReadTRelationByParentIdAsync(parentId);
+
+        return relations.Select(_mapper.ToBlo).ToList();
     }
 
-    public async Task<List<TRelation>> GetChildRelationsAsync(long childId)
+    public async Task<List<TRelationDTO>> GetChildRelationsAsync(long childId)
     {
-        return await _relationRepository.ReadTRelationByChildIdAsync(childId);
+        var relations = await _relationRepository.ReadTRelationByChildIdAsync(childId);
+
+        return relations.Select(_mapper.ToBlo).ToList();
     }
 
     public async Task DeleteRelationAsync(long parentId, long childId)

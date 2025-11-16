@@ -1,8 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Configuration;
+﻿using Core.DTO;
 using Core.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace SemestrWork
 {
@@ -11,33 +8,29 @@ namespace SemestrWork
         private readonly IGroupService _groupService;
         private readonly IPropertyService _propertyService;
         private readonly IRelationService _relationService;
-        
+
         public Form1(
             IGroupService groupService,
             IPropertyService propertyService,
             IRelationService relationService)
         {
             InitializeComponent();
-            treeView.BeforeExpand += TreeView_BeforeExpand;
-            FormClosing += Form1_FormClosing;
-            InitRootGroup();
-            
+            treeView.AfterExpand += TreeView_AfterExpand;
+
             _groupService = groupService;
             _propertyService = propertyService;
-            _relationService = relationService; 
+            _relationService = relationService;
+
+            InitRootGroup();
             
             gbEditGroup.Visible = false;
             gbEditProperty.Visible = false;
 
         }
 
-        public void Form1_FormClosing(object? sender, FormClosingEventArgs e)
+        private async void TreeView_AfterExpand(object? sender, TreeViewEventArgs e)
         {
-            _context.Database.CloseConnection();
-        }
 
-        private void TreeView_BeforeExpand(object? sender, TreeViewCancelEventArgs e)
-        {
             var expandedNode = e.Node;
             if (expandedNode is null)
             {
@@ -48,28 +41,29 @@ namespace SemestrWork
             expandedNode.Nodes.Clear();
 
             var (id, type) = ParseNodeKey(expandedNode.Name);
-            
+
             if (type == "Property")
             {
                 return;
             }
-            
+
             var childGroups = await _groupService.GetChildGroupsAsync(id);
             foreach (var childGroup in childGroups)
             {
                 var childNode = CreateTreeNode(childGroup);
                 expandedNode.Nodes.Add(childNode);
             }
-            
+
             var properties = await _propertyService.GetGroupPropertiesAsync(id);
             foreach (var property in properties)
             {
                 var propertyNode = CreateTreeNode(property);
                 expandedNode.Nodes.Add(propertyNode);
             }
+
         }
 
-        public void InitRootGroup()
+        public async void InitRootGroup()
         {
             var firstGroup = await _groupService.GetGroupAsync(1);
             if (firstGroup is null)
@@ -83,7 +77,7 @@ namespace SemestrWork
             treeView.Nodes.Add(rootNode);
         }
 
-        private void miAddGroup_Click(object sender, EventArgs e)
+        private async void miAddGroup_Click(object sender, EventArgs e)
         {
             var selectedNode = treeView.SelectedNode;
             var type = selectedNode.Name.Split("|")[1];
@@ -96,7 +90,7 @@ namespace SemestrWork
             gbEditProperty.Visible = false;
             gbEditGroup.Visible = true;
             tbGroupName.Text = string.Empty;
-            tbGroupId.Text = await _groupService.GetNextGroupIdAsync().ToString();
+            tbGroupId.Text = (await _groupService.GetNextGroupIdAsync()).ToString();
         }
 
         private void miAddProperty_Click(object sender, EventArgs e)
@@ -123,7 +117,7 @@ namespace SemestrWork
             tbPropertyGroupId.Text = id.ToString();
         }
 
-        private void miEdit_Click(object sender, EventArgs e)
+        private async void miEdit_Click(object sender, EventArgs e)
         {
             var selectedNode = treeView.SelectedNode;
 
@@ -137,7 +131,7 @@ namespace SemestrWork
                 gbEditProperty.Visible = false;
 
                 tbGroupName.Text = selectedNode.Text;
-                tbGroupId.Text = id;
+                tbGroupId.Text = id.ToString();
             }
             else if (type == "Property")
             {
@@ -153,7 +147,7 @@ namespace SemestrWork
             }
         }
 
-        private void miDelete_Click(object sender, EventArgs e)
+        private async void miDelete_Click(object sender, EventArgs e)
         {
             var selectedNode = treeView.SelectedNode;
 
@@ -192,11 +186,11 @@ namespace SemestrWork
             {
                 await _propertyService.DeletePropertyAsync(id);
             }
-
+           
             selectedNode.Remove();
         }
 
-        private void btnGroupSave_Click(object sender, EventArgs e)
+        private async void btnGroupSave_Click(object sender, EventArgs e)
         {
             var id = Convert.ToInt64(tbGroupId.Text);
             var name = tbGroupName.Text;
@@ -239,13 +233,13 @@ namespace SemestrWork
             gbEditGroup.Visible = false;
         }
 
-        private void treeView_AfterSelect(object sender, TreeViewEventArgs e)
+        private void TreeView_AfterSelect(object sender, TreeViewEventArgs e)
         {
             gbEditGroup.Visible = false;
             gbEditProperty.Visible = false;
         }
 
-        private void btnPropertySave_Click(object sender, EventArgs e)
+        private async void btnPropertySave_Click(object sender, EventArgs e)
         {
             var name = tbPropertyName.Text;
             var value = tbPropertyValue.Text;
@@ -266,7 +260,7 @@ namespace SemestrWork
             else if (type == "Property")
             {
                 await _propertyService.UpdatePropertyAsync(id, name, value);
-                
+
                 MessageBox.Show("Свойство изменено");
 
                 selectedNode.Text = name;
@@ -286,7 +280,7 @@ namespace SemestrWork
             gbEditProperty.Visible = false;
         }
 
-        private (long id, string type) ParseNodeKey(string nodeKey)
+        private static (long id, string type) ParseNodeKey(string nodeKey)
         {
             var parts = nodeKey.Split('|');
             if (parts.Length != 2)
@@ -298,7 +292,7 @@ namespace SemestrWork
             return (id, type);
         }
         
-        private TreeNode CreateTreeNode(TGroup group)
+        private static TreeNode CreateTreeNode(TGroupDTO group)
         {
             var node = new TreeNode
             {
@@ -315,7 +309,7 @@ namespace SemestrWork
             return node;
         }
         
-        private TreeNode CreateTreeNode(TProperty property)
+        private static TreeNode CreateTreeNode(TPropertyDTO property)
         {
             var node = new TreeNode
             {
@@ -331,7 +325,5 @@ namespace SemestrWork
 
             return node;
         }
-        
-        
     }   
 }

@@ -106,7 +106,7 @@
             treeView.Name = "treeView";
             treeView.Size = new Size(210, 394);
             treeView.TabIndex = 1;
-            treeView.AfterSelect += treeView_AfterSelect;
+            treeView.AfterSelect += TreeView_AfterSelect;
             // 
             // gbEditGroup
             // 
