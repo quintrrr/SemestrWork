@@ -9,11 +9,11 @@ namespace Core.Interfaces
 {
     public interface ITPropertyRepository
     {
-        List<TProperty> ReadTProperty();
-        TProperty? ReadTPropertyById(long id);
-        List<TProperty> ReadTPropertyByGroupId(long groupId);
-        void CreateTProperty(string name, string value, long groupId);
-        void DeleteTProperty(long id);
-        void UpdateTProperty(long id, string name, string value);
+        Task<List<TProperty>> ReadTPropertyAsync();
+        Task<TProperty?> ReadTPropertyByIdAsync(long id);
+        Task<List<TProperty>> ReadTPropertyByGroupIdAsync(long groupId);
+        Task CreateTPropertyAsync(string name, string value, long groupId);
+        Task DeleteTPropertyAsync(long id);
+        Task UpdateTPropertyAsync(long id, string name, string value);
     }
 }

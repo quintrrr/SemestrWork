@@ -9,11 +9,11 @@ namespace Core.Interfaces
 {
     public interface ITRelationRepository
     {
-        List<TRelation> ReadTRelation();
-        List<TRelation> ReadTRelationByParentId(long id);
-        List<TRelation> ReadTRelationByChildId(long id);
-        void CreateTRelation(long parentId, long childId);
-        void DeleteTRelation(long parentId, long childId);
+        Task<List<TRelation>> ReadTRelationAsync();
+        Task<List<TRelation>> ReadTRelationByParentIdAsync(long id);
+        Task<List<TRelation>> ReadTRelationByChildIdAsync(long id);
+        Task CreateTRelationAsync(long parentId, long childId);
+        Task DeleteTRelationAsync(long parentId, long childId);
         
     }
 }

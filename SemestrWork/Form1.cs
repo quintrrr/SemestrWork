@@ -8,15 +8,23 @@ namespace SemestrWork
 {
     public partial class Form1 : Form
     {
-        private readonly ITreeService _treeService;
-        public Form1(ITreeService treeService)
+        private readonly IGroupService _groupService;
+        private readonly IPropertyService _propertyService;
+        private readonly IRelationService _relationService;
+        
+        public Form1(
+            IGroupService groupService,
+            IPropertyService propertyService,
+            IRelationService relationService)
         {
             InitializeComponent();
             treeView.BeforeExpand += TreeView_BeforeExpand;
             FormClosing += Form1_FormClosing;
             InitRootGroup();
             
-            _treeService = treeService;
+            _groupService = groupService;
+            _propertyService = propertyService;
+            _relationService = relationService; 
             
             gbEditGroup.Visible = false;
             gbEditProperty.Visible = false;
@@ -46,24 +54,24 @@ namespace SemestrWork
                 return;
             }
             
-            var childGroups = _treeService.GetChildGroups(id);
+            var childGroups = await _groupService.GetChildGroupsAsync(id);
             foreach (var childGroup in childGroups)
             {
-                var childNode = CreateGroupNode(childGroup);
+                var childNode = CreateTreeNode(childGroup);
                 expandedNode.Nodes.Add(childNode);
             }
             
-            var properties = _treeService.GetGroupProperties(id);
+            var properties = await _propertyService.GetGroupPropertiesAsync(id);
             foreach (var property in properties)
             {
-                var propertyNode = CreatePropertyNode(property);
+                var propertyNode = CreateTreeNode(property);
                 expandedNode.Nodes.Add(propertyNode);
             }
         }
 
         public void InitRootGroup()
         {
-            var firstGroup = _treeService.GetTGroup(1);
+            var firstGroup = await _groupService.GetGroupAsync(1);
             if (firstGroup is null)
             {
                 MessageBox.Show("Корневая группа отсутствует в базе данных");
@@ -88,7 +96,7 @@ namespace SemestrWork
             gbEditProperty.Visible = false;
             gbEditGroup.Visible = true;
             tbGroupName.Text = string.Empty;
-            tbGroupId.Text = _treeService.GetNextGroupId().ToString();
+            tbGroupId.Text = await _groupService.GetNextGroupIdAsync().ToString();
         }
 
         private void miAddProperty_Click(object sender, EventArgs e)
@@ -136,7 +144,7 @@ namespace SemestrWork
                 gbEditGroup.Visible = false;
                 gbEditProperty.Visible = true;
 
-                var property = _treeService.GetProperty(id);
+                var property = await _propertyService.GetPropertyAsync(id);
 
                 if (property is null) return;
                 tbPropertyName.Text = selectedNode.Text;
@@ -159,34 +167,31 @@ namespace SemestrWork
 
             if (type == "Group")
             {
-                var parentRelations = _treeService.GetParentRelations(id);
-                var childRelations = _treeService.GetChildRelations(id);
-                var properties = _treeService.GetGroupProperties(id);
+                var parentRelations = await _relationService.GetParentRelationsAsync(id);
+                var childRelations = await _relationService.GetChildRelationsAsync(id);
+                var properties = await _propertyService.GetGroupPropertiesAsync(id);
 
                 foreach (var parentRelation in parentRelations)
                 {
-                    _treeService.DeleteRelation(id, parentRelation.ChildId);
+                    await _relationService.DeleteRelationAsync(id, parentRelation.ChildId);
                 }
 
                 foreach (var childRelation in childRelations)
                 {
-                    _treeService.DeleteRelation(childRelation.ParentId, id);
+                    await _relationService.DeleteRelationAsync(childRelation.ParentId, id);
                 }
 
                 foreach (var property in properties)
                 {
-                    _treeService.DeleteProperty(property.Id);
+                    await _propertyService.DeletePropertyAsync(property.Id);
                 }
-                _context.SaveChanges();
 
-                _treeService.DeleteGroup(id);
+                await _groupService.DeleteGroupAsync(id);
             }
             else if (type == "Property")
             {
-                _treeService.DeleteProperty(id);
+                await _propertyService.DeletePropertyAsync(id);
             }
-
-            _context.SaveChanges();
 
             selectedNode.Remove();
         }
@@ -200,11 +205,9 @@ namespace SemestrWork
             
             var (parentId, type) = ParseNodeKey(selectedNode.Name);
 
-            if (_context.Groups.Any(g => g.Id == id))
+            if (await _groupService.IsGroupExistsAsync(id))
             {
-                UpdateTGroup(id, name);
-
-                _context.SaveChanges();
+                await _groupService.UpdateGroupAsync(id, name);
 
                 MessageBox.Show("Группа изменена");
 
@@ -212,11 +215,9 @@ namespace SemestrWork
             }
             else
             {
-                CreateTGroup(name);
+                await _groupService.CreateGroupAsync(name);
 
-                CreateTRelation(parentId, id);
-
-                _context.SaveChanges();
+                await _relationService.CreateRelationAsync(parentId, id);
 
                 MessageBox.Show("Группа добавлена");
 
@@ -251,14 +252,11 @@ namespace SemestrWork
             var groupId = Convert.ToInt64(tbPropertyGroupId.Text);
 
             var selectedNode = treeView.SelectedNode;
-            var id = Convert.ToInt64(selectedNode.Name.Split("|")[0]);
-            var type = selectedNode.Name.Split("|")[1];
+            var (id, type) = ParseNodeKey(selectedNode.Name);
 
             if (type == "Group")
             {
-                CreateTProperty(name, value, groupId);
-
-                _context.SaveChanges();
+                await _propertyService.CreatePropertyAsync(name, value, groupId);
 
                 MessageBox.Show("Свойство добавлено");
 
@@ -267,10 +265,8 @@ namespace SemestrWork
             }
             else if (type == "Property")
             {
-                UpdateTProperty(id, name, value);
-
-                _context.SaveChanges();
-
+                await _propertyService.UpdatePropertyAsync(id, name, value);
+                
                 MessageBox.Show("Свойство изменено");
 
                 selectedNode.Text = name;

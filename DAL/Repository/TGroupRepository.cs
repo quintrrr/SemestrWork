@@ -18,30 +18,28 @@ namespace DAL.Repository
         {
             _context = context;
         }
-        public List<TGroup> ReadTGroup()
+        public async Task<List<TGroup>> ReadTGroupAsync()
         {
-            return _context.Groups
+            return await _context.Groups
                 .AsNoTracking()
-                .ToList();
+                .ToListAsync();
         }
 
-        public TGroup? ReadTGroupById(long id)
+        public async Task<TGroup?> ReadTGroupByIdAsync(long id)
         {
-            return _context.Groups
+            return await  _context.Groups
                 .AsNoTracking()
-                .SingleOrDefault(g => g.Id == id);
+                .SingleOrDefaultAsync(g => g.Id == id);
         }
 
-        public long GetNextGroupId()
+        public async Task<long> GetNextGroupIdAsync()
         {
-            return _context.Groups.Any() ? _context.Groups.Max(x => x.Id) + 1 : 1;
+            return await _context.Groups.AnyAsync() ? await _context.Groups.MaxAsync(x => x.Id) + 1 : 1;
         }
 
-        public void CreateTGroup(string name)
+        public async Task CreateTGroupAsync(string name)
         {
-            if (_context == null) return;
-
-            var maxId = _context.Groups.Any() ? _context.Groups.Max(x => x.Id) + 1 : 1;
+            var maxId = await _context.Groups.AnyAsync() ? await _context.Groups.MaxAsync(x => x.Id) + 1 : 1;
 
             var newGroup = new TGroup()
             {
@@ -49,37 +47,37 @@ namespace DAL.Repository
                 Name = name
             };
 
-            _context.Groups.Add(newGroup);
+            await _context.Groups.AddAsync(newGroup);
+            
+            await _context.SaveChangesAsync();
         }
 
-        public void DeleteTGroup(long id)
+        public async Task DeleteTGroupAsync(long id)
         {
-            if (_context == null) return;
-
-            var groupForDelete = _context.Groups.SingleOrDefault(x => x.Id == id);
+            var groupForDelete = await _context.Groups.SingleOrDefaultAsync(x => x.Id == id);
 
             if (groupForDelete == null)
             {
-                MessageBox.Show($@"Группа с id = {id} не найдена!");
                 return;
             }
 
             _context.Groups.Remove(groupForDelete);
+            
+            await _context.SaveChangesAsync();
         }
 
-        public void UpdateTGroup(long id, string name)
+        public async Task UpdateTGroupAsync(long id, string name)
         {
-            if (_context == null) return;
-
-            var groupForUpdate = _context.Groups.FirstOrDefault(x => x.Id == id);
+            var groupForUpdate = await _context.Groups.FirstOrDefaultAsync(x => x.Id == id);
 
             if (groupForUpdate == null)
             {
-                MessageBox.Show(@"Группа, предназначенная для обновления, не найдена");
                 return;
             }
 
             groupForUpdate.Name = name;
+            
+            await _context.SaveChangesAsync();
         }
     }
 }

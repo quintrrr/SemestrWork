@@ -17,26 +17,32 @@ namespace DAL.Repository
         {
             _context = context;
         }
-        public List<TProperty> ReadTProperty()
+        public async Task<List<TProperty>> ReadTPropertyAsync()
         {
-            return _context.Properties.AsNoTracking().ToList();
+            return await _context.Properties
+                .AsNoTracking()
+                .ToListAsync();
         }
 
-        public TProperty? ReadTPropertyById(long id)
+        public async Task<TProperty?> ReadTPropertyByIdAsync(long id)
         {
-            return _context.Properties.AsNoTracking().SingleOrDefault(g => g.Id == id);
+            return await _context.Properties
+                .AsNoTracking()
+                .SingleOrDefaultAsync(g => g.Id == id);
         }
 
-        public List<TProperty> ReadTPropertyByGroupId(long groupId)
+        public async Task<List<TProperty>> ReadTPropertyByGroupIdAsync(long groupId)
         {
-            return _context.Properties.AsNoTracking().Where(p => p.GroupId == groupId).ToList();
+            return await _context.Properties
+                .AsNoTracking()
+                .Where(p => p.GroupId == groupId)
+                .ToListAsync();
         }
 
-        public void CreateTProperty(string name, string value, long groupId)
+        public async Task CreateTPropertyAsync(string name, string value, long groupId)
         {
-            if (_context == null) return;
-
-            var maxId = _context.Properties.Any() ? _context.Properties.Max(x => x.Id) + 1 : 1;
+            var maxId = await _context.Properties.AnyAsync() ?
+                await _context.Properties.MaxAsync(x => x.Id) + 1 : 1;
 
             var newProperty = new TProperty()
             {
@@ -46,38 +52,38 @@ namespace DAL.Repository
                 GroupId = groupId
             };
 
-            _context.Properties.Add(newProperty);
+            await _context.Properties.AddAsync(newProperty);
+            
+            await _context.SaveChangesAsync();
         }
 
-        public void DeleteTProperty(long id)
+        public async Task DeleteTPropertyAsync(long id)
         {
-            if (_context == null) return;
-
-            var propertyForDelete = _context.Properties.SingleOrDefault(x => x.Id == id);
+            var propertyForDelete = await _context.Properties.SingleOrDefaultAsync(x => x.Id == id);
 
             if (propertyForDelete == null)
             {
-                MessageBox.Show($@"Свойство с id = {id} не найдено!");
                 return;
             }
 
             _context.Properties.Remove(propertyForDelete);
+            
+            await _context.SaveChangesAsync();
         }
 
-        public void UpdateTProperty(long id, string name, string value)
+        public async Task UpdateTPropertyAsync(long id, string name, string value)
         {
-            if (_context == null) return;
-
-            var propertyForUpdate = _context.Properties.FirstOrDefault(x => x.Id == id);
+            var propertyForUpdate = await _context.Properties.FirstOrDefaultAsync(x => x.Id == id);
 
             if (propertyForUpdate == null)
             {
-                MessageBox.Show(@"Группа, предназначенная для обновления, не найдена");
                 return;
             }
 
             propertyForUpdate.Name = name;
             propertyForUpdate.Value = value;
+            
+            await _context.SaveChangesAsync();
         }
     }
 }

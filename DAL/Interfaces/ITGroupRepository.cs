@@ -9,11 +9,11 @@ namespace Core.Interfaces
 {
     public interface ITGroupRepository
     {
-        List<TGroup> ReadTGroup();
-        TGroup? ReadTGroupById(long id);
-        long GetNextGroupId();
-        void CreateTGroup(string name);
-        void DeleteTGroup(long id);
-        void UpdateTGroup(long id, string name);
+        Task<List<TGroup>> ReadTGroupAsync();
+        Task<TGroup?> ReadTGroupByIdAsync(long id);
+        Task<long> GetNextGroupIdAsync();
+        Task CreateTGroupAsync(string name);
+        Task DeleteTGroupAsync(long id);
+        Task UpdateTGroupAsync(long id, string name);
     }
 }
