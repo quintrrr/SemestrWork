@@ -6,29 +6,29 @@ namespace DAL.Repository
 {
     public class TRelationRepository : ITRelationRepository
     {
-        private AppContext _context;
+        private readonly AppDbContext _dbContext;
 
-        public TRelationRepository(AppContext context)
+        public TRelationRepository(AppDbContext dbContext)
         {
-            _context = context;
+            _dbContext = dbContext;
         }
         public async Task<List<TRelation>> ReadTRelationAsync()
         {
-            return await _context.Relations
+            return await _dbContext.Relations
                 .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<List<TRelation>> ReadTRelationByParentIdAsync(long id)
         {
-            return await _context.Relations
+            return await _dbContext.Relations
                 .Where(x => x.ParentId == id)
                 .ToListAsync();
         }
 
         public async Task<List<TRelation>> ReadTRelationByChildIdAsync(long id)
         {
-            return await _context.Relations
+            return await _dbContext.Relations
                 .AsNoTracking()
                 .Where(x => x.ChildId == id)
                 .ToListAsync();
@@ -36,7 +36,7 @@ namespace DAL.Repository
 
         public async Task CreateTRelationAsync(long parentId, long childId)
         {
-            if (await _context.Relations.AnyAsync(x => x.ParentId == parentId && x.ChildId == childId))
+            if (await _dbContext.Relations.AnyAsync(x => x.ParentId == parentId && x.ChildId == childId))
             {
                 throw new Exception("Такая связь уже существует");
             }
@@ -47,24 +47,24 @@ namespace DAL.Repository
                 ChildId = childId
             };
 
-            await _context.Relations.AddAsync(newRelation);
+            await _dbContext.Relations.AddAsync(newRelation);
             
-            await _context.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
 
         public async Task DeleteTRelationAsync(long parentId, long childId)
         {
-            var relationForDelete = await _context.Relations
+            var relationForDelete = await _dbContext.Relations
                 .FirstOrDefaultAsync(x => x.ParentId == parentId && x.ChildId == childId);
 
             if (relationForDelete == null)
             {
-                return;
+                throw new Exception("Relation not found");
             }
 
-            _context.Relations.Remove(relationForDelete);
+            _dbContext.Relations.Remove(relationForDelete);
             
-            await _context.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
     }
 }

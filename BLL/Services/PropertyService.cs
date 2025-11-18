@@ -1,3 +1,4 @@
+using BLL.Enums;
 using Core.DTO;
 using Core.Interfaces;
 using DAL.DAO;
@@ -45,5 +46,19 @@ public class PropertyService : IPropertyService
     public async Task UpdatePropertyAsync(long propertyId, string name, string value)
     {
         await _propertyRepository.UpdateTPropertyAsync(propertyId, name, value);
+    }
+
+    public async Task<PropertySaveResult> SavePropertyAsync(SavePropertyDTO savePropertyDto)
+    {
+        if (savePropertyDto.PropertyId is null)
+        {
+            await CreatePropertyAsync(savePropertyDto.Name, savePropertyDto.Value, savePropertyDto.GroupId);
+
+            return PropertySaveResult.Created;
+        }
+        
+        await UpdatePropertyAsync((long)savePropertyDto.PropertyId, savePropertyDto.Name, savePropertyDto.Value);
+        
+        return PropertySaveResult.Updated;
     }
 }

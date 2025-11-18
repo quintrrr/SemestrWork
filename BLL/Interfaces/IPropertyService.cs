@@ -1,3 +1,4 @@
+using BLL.Enums;
 using Core.DTO;
 
 namespace Core.Interfaces;
@@ -9,4 +10,5 @@ public interface IPropertyService
     Task DeletePropertyAsync(long propertyId);
     Task CreatePropertyAsync(string name, string value, long groupId);
     Task UpdatePropertyAsync(long propertyId, string name, string value);
+    Task<PropertySaveResult> SavePropertyAsync(SavePropertyDTO savePropertyDto);
 }

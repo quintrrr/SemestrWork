@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DAL
 {
-    public class AppContext : DbContext 
+    public class AppDbContext : DbContext 
     {
         public DbSet<TGroup> Groups { get; set; }
         public DbSet<TRelation> Relations { get; set; }
         public DbSet<TProperty> Properties { get; set; }
 
-        public AppContext(DbContextOptions<AppContext> options) : base(options) { }
+        public AppDbContext(string connectionString) : base(new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(connectionString)
+            .Options) { }
     }
 }

@@ -1,3 +1,4 @@
+using BLL.Enums;
 using Core.DTO;
 using Core.Interfaces;
 using DAL.DAO;
@@ -66,5 +67,21 @@ public class GroupService : IGroupService
     public async Task<bool> IsGroupExistsAsync(long groupId)
     {
         return await _groupRepository.ReadTGroupByIdAsync(groupId) != null;
+    }
+
+    public async Task<GroupSaveResult> SaveGroupAsync(long groupId, long parentId, string name)
+    {
+        if (await IsGroupExistsAsync(groupId))
+        {
+            await UpdateGroupAsync(groupId, name);
+
+            return GroupSaveResult.Updated;
+        }
+        
+        await CreateGroupAsync(name);
+        
+        await _relationRepository.CreateTRelationAsync(parentId, groupId);
+        
+        return GroupSaveResult.Created;
     }
 }

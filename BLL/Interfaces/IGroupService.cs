@@ -1,3 +1,4 @@
+using BLL.Enums;
 using Core.DTO;
 
 namespace Core.Interfaces;
@@ -11,4 +12,5 @@ public interface IGroupService
     Task<TGroupDTO?> GetGroupAsync(long groupId);
     Task<long> GetNextGroupIdAsync();
     Task<bool> IsGroupExistsAsync(long groupId);
+    Task<GroupSaveResult> SaveGroupAsync(long groupId, long parentId, string name);
 }

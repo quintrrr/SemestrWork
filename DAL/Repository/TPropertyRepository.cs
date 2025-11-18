@@ -11,29 +11,29 @@ namespace DAL.Repository
 {
     public class TPropertyRepository : ITPropertyRepository
     {
-        private AppContext _context;
+        private readonly AppDbContext _dbContext;
 
-        public TPropertyRepository(AppContext context)
+        public TPropertyRepository(AppDbContext dbContext)
         {
-            _context = context;
+            _dbContext = dbContext;
         }
         public async Task<List<TProperty>> ReadTPropertyAsync()
         {
-            return await _context.Properties
+            return await _dbContext.Properties
                 .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<TProperty?> ReadTPropertyByIdAsync(long id)
         {
-            return await _context.Properties
+            return await _dbContext.Properties
                 .AsNoTracking()
                 .SingleOrDefaultAsync(g => g.Id == id);
         }
 
         public async Task<List<TProperty>> ReadTPropertyByGroupIdAsync(long groupId)
         {
-            return await _context.Properties
+            return await _dbContext.Properties
                 .AsNoTracking()
                 .Where(p => p.GroupId == groupId)
                 .ToListAsync();
@@ -41,8 +41,8 @@ namespace DAL.Repository
 
         public async Task CreateTPropertyAsync(string name, string value, long groupId)
         {
-            var maxId = await _context.Properties.AnyAsync() ?
-                await _context.Properties.MaxAsync(x => x.Id) + 1 : 1;
+            var maxId = await _dbContext.Properties.AnyAsync() ?
+                await _dbContext.Properties.MaxAsync(x => x.Id) + 1 : 1;
 
             var newProperty = new TProperty()
             {
@@ -52,28 +52,28 @@ namespace DAL.Repository
                 GroupId = groupId
             };
 
-            await _context.Properties.AddAsync(newProperty);
+            await _dbContext.Properties.AddAsync(newProperty);
             
-            await _context.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
 
         public async Task DeleteTPropertyAsync(long id)
         {
-            var propertyForDelete = await _context.Properties.SingleOrDefaultAsync(x => x.Id == id);
+            var propertyForDelete = await _dbContext.Properties.SingleOrDefaultAsync(x => x.Id == id);
 
             if (propertyForDelete == null)
             {
-                return;
+                throw new Exception("Property not found");
             }
 
-            _context.Properties.Remove(propertyForDelete);
+            _dbContext.Properties.Remove(propertyForDelete);
             
-            await _context.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
 
         public async Task UpdateTPropertyAsync(long id, string name, string value)
         {
-            var propertyForUpdate = await _context.Properties.FirstOrDefaultAsync(x => x.Id == id);
+            var propertyForUpdate = await _dbContext.Properties.FirstOrDefaultAsync(x => x.Id == id);
 
             if (propertyForUpdate == null)
             {
@@ -83,7 +83,7 @@ namespace DAL.Repository
             propertyForUpdate.Name = name;
             propertyForUpdate.Value = value;
             
-            await _context.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
     }
 }
