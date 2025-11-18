@@ -1,25 +1,26 @@
 ﻿using Core.DTO;
-using Core.Interfaces;
+using SemestrWork.ApiClients;
+using System.Net;
 
 namespace SemestrWork
 {
     public partial class Form1 : Form
     {
-        private readonly IGroupService _groupService;
-        private readonly IPropertyService _propertyService;
-        private readonly IRelationService _relationService;
+        private readonly GroupsApiClient _groupsApiClient;
+        private readonly PropertiesApiClient _propertiesApiClient;
+        private readonly RelationsApiClient _relationsApiClient;
 
         public Form1(
-            IGroupService groupService,
-            IPropertyService propertyService,
-            IRelationService relationService)
+            GroupsApiClient groupsApiClient,
+            PropertiesApiClient propertiesApiClient,
+            RelationsApiClient relationsApiClient)
         {
             InitializeComponent();
             treeView.AfterExpand += TreeView_AfterExpand;
 
-            _groupService = groupService;
-            _propertyService = propertyService;
-            _relationService = relationService;
+            _groupsApiClient = groupsApiClient;
+            _propertiesApiClient = propertiesApiClient; 
+            _relationsApiClient = relationsApiClient;
 
             InitRootGroup();
             
@@ -47,14 +48,14 @@ namespace SemestrWork
                 return;
             }
 
-            var childGroups = await _groupService.GetChildGroupsAsync(id);
+            var childGroups = await _groupsApiClient.GetChildGroupsAsync(id);
             foreach (var childGroup in childGroups)
             {
                 var childNode = CreateTreeNode(childGroup);
                 expandedNode.Nodes.Add(childNode);
             }
 
-            var properties = await _propertyService.GetGroupPropertiesAsync(id);
+            var properties = await _propertiesApiClient.GetGroupPropertiesAsync(id);
             foreach (var property in properties)
             {
                 var propertyNode = CreateTreeNode(property);
@@ -65,7 +66,7 @@ namespace SemestrWork
 
         public async void InitRootGroup()
         {
-            var firstGroup = await _groupService.GetGroupAsync(1);
+            var firstGroup = await _groupsApiClient.GetGroupAsync(1);
             if (firstGroup is null)
             {
                 MessageBox.Show("Корневая группа отсутствует в базе данных");
@@ -90,7 +91,7 @@ namespace SemestrWork
             gbEditProperty.Visible = false;
             gbEditGroup.Visible = true;
             tbGroupName.Text = string.Empty;
-            tbGroupId.Text = (await _groupService.GetNextGroupIdAsync()).ToString();
+            tbGroupId.Text = (await _groupsApiClient.GetNextGroupIdAsync()).ToString();
         }
 
         private void miAddProperty_Click(object sender, EventArgs e)
@@ -138,7 +139,7 @@ namespace SemestrWork
                 gbEditGroup.Visible = false;
                 gbEditProperty.Visible = true;
 
-                var property = await _propertyService.GetPropertyAsync(id);
+                var property = await _propertiesApiClient.GetPropertyAsync(id);
 
                 if (property is null) return;
                 tbPropertyName.Text = selectedNode.Text;
@@ -161,30 +162,15 @@ namespace SemestrWork
 
             if (type == "Group")
             {
-                var parentRelations = await _relationService.GetParentRelationsAsync(id);
-                var childRelations = await _relationService.GetChildRelationsAsync(id);
-                var properties = await _propertyService.GetGroupPropertiesAsync(id);
+                var code = await _groupsApiClient.DeleteGroupAsync(id);
 
-                foreach (var parentRelation in parentRelations)
-                {
-                    await _relationService.DeleteRelationAsync(id, parentRelation.ChildId);
-                }
-
-                foreach (var childRelation in childRelations)
-                {
-                    await _relationService.DeleteRelationAsync(childRelation.ParentId, id);
-                }
-
-                foreach (var property in properties)
-                {
-                    await _propertyService.DeletePropertyAsync(property.Id);
-                }
-
-                await _groupService.DeleteGroupAsync(id);
+                MessageBox.Show(code == HttpStatusCode.NotFound ? "Группа не найдена" : "Группа успешно удалена");
             }
             else if (type == "Property")
             {
-                await _propertyService.DeletePropertyAsync(id);
+                var code = await _propertiesApiClient.DeletePropertyAsync(id);
+
+                MessageBox.Show(code == HttpStatusCode.NotFound ? "Свойство не найдено" : "Свойство успешно удалено");
             }
            
             selectedNode.Remove();
@@ -199,27 +185,23 @@ namespace SemestrWork
             
             var (parentId, type) = ParseNodeKey(selectedNode.Name);
 
-            if (await _groupService.IsGroupExistsAsync(id))
-            {
-                await _groupService.UpdateGroupAsync(id, name);
+            var dto = new SaveGroupDTO { GroupId = id, Name = name, ParentId = parentId };
 
+            var code = await _groupsApiClient.SaveGroupAsync(dto);
+
+            if (code == HttpStatusCode.NoContent)
+            {
                 MessageBox.Show("Группа изменена");
 
                 selectedNode.Text = name;
             }
-            else
+            else if (code == HttpStatusCode.Created)
             {
-                await _groupService.CreateGroupAsync(name);
-
-                await _relationService.CreateRelationAsync(parentId, id);
-
                 MessageBox.Show("Группа добавлена");
 
                 selectedNode.Collapse();
                 selectedNode.Expand();
             }
-
-
 
             tbGroupName.Text = string.Empty;
             tbGroupId.Text = string.Empty;
@@ -248,19 +230,19 @@ namespace SemestrWork
             var selectedNode = treeView.SelectedNode;
             var (id, type) = ParseNodeKey(selectedNode.Name);
 
-            if (type == "Group")
+            var dto = new SavePropertyDTO { GroupId = groupId, Name = name, Value = value, PropertyId = type == "Property" ? id : null };
+            
+            var code = await _propertiesApiClient.SavePropertyAsync(dto);
+            
+            if (code == HttpStatusCode.Created)
             {
-                await _propertyService.CreatePropertyAsync(name, value, groupId);
-
                 MessageBox.Show("Свойство добавлено");
 
                 selectedNode.Collapse();
                 selectedNode.Expand();
             }
-            else if (type == "Property")
+            else if (code == HttpStatusCode.NoContent)
             {
-                await _propertyService.UpdatePropertyAsync(id, name, value);
-
                 MessageBox.Show("Свойство изменено");
 
                 selectedNode.Text = name;

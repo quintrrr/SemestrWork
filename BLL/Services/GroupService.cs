@@ -9,15 +9,18 @@ public class GroupService : IGroupService
 {
     private readonly ITGroupRepository _groupRepository;
     private readonly ITRelationRepository _relationRepository;
+    private readonly ITPropertyRepository _propertyRepository;
     private readonly IMapper<TGroupDTO, TGroup> _mapper;
 
     public GroupService(
         ITGroupRepository groupRepository,
         ITRelationRepository relationRepository, 
+        ITPropertyRepository propertyRepository,
         IMapper<TGroupDTO, TGroup> mapper)
     {
         _groupRepository = groupRepository;
         _relationRepository = relationRepository;
+        _propertyRepository = propertyRepository;
         _mapper = mapper;
     }
     
@@ -33,6 +36,25 @@ public class GroupService : IGroupService
 
     public async Task DeleteGroupAsync(long groupId)
     {
+        var parentRelations = await _relationRepository.ReadTRelationByParentIdAsync(groupId);
+        var childRelations = await _relationRepository.ReadTRelationByChildIdAsync(groupId);
+        var properties = await _propertyRepository.ReadTPropertyByGroupIdAsync(groupId);
+
+        foreach (var parentRelation in parentRelations)
+        {
+            await _relationRepository.DeleteTRelationAsync(groupId, parentRelation.ChildId);
+        }
+
+        foreach (var childRelation in childRelations)
+        {
+            await _relationRepository.DeleteTRelationAsync(childRelation.ParentId, groupId);
+        }
+
+        foreach (var property in properties)
+        {
+            await _propertyRepository.DeleteTPropertyAsync(property.Id);
+        }
+
         await _groupRepository.DeleteTGroupAsync(groupId);
     }
 

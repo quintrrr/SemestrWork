@@ -1,6 +1,5 @@
 using Core.DTO;
 using Core.Interfaces;
-using DAL.DAO;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
@@ -29,12 +28,12 @@ public class RelationsController : ControllerBase
         return Ok(await _relationService.GetChildRelationsAsync(childId));
     }
     
-    [HttpDelete]
-    public async Task<ActionResult> Delete([FromBody] TRelationDTO relation)
+    [HttpDelete("{parentId:long}/{childId:long}")]
+    public async Task<ActionResult> Delete(long parentId, long childId)
     {
         try
         {
-            await _relationService.DeleteRelationAsync(relation.ParentId, relation.ChildId);
+            await _relationService.DeleteRelationAsync(parentId, childId);
             return NoContent();
         }
         catch (Exception ex)
