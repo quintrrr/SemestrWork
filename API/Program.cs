@@ -12,7 +12,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var connectionString = builder.Configuration.GetSection("Storage").GetValue<string>("MacConnectionString")
+var connectionString = builder.Configuration.GetSection("Storage").GetValue<string>("ConnectionString")
              ?? throw new Exception("Storage connection string is missing");
 builder.Services.AddSingleton(new AppDbContext(connectionString));
 builder.Services.AddSingleton<ITGroupRepository, TGroupRepository>();
